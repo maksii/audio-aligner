@@ -1,4 +1,7 @@
 import io
+import os
+import hashlib
+import tempfile
 from fractions import Fraction
 
 import av
@@ -11,19 +14,27 @@ AV_TIME_BASE_Q = 1000000
 DEFAULT_FPS = Fraction(24000, 1001)
 
 
-def get_video_fps(video_path: str) -> Fraction:
-    with av.open(video_path, 'r') as container:
-        if container.streams.video:
-            s = container.streams.video[0]
-        else:
-            return DEFAULT_FPS
-    if s.average_rate and s.average_rate.denominator != 0:
-        return s.average_rate
-    if s.guessed_rate and s.guessed_rate.denominator != 0:
-        return s.guessed_rate
-    if s.codec_context and s.codec_context.framerate and s.codec_context.framerate.denominator != 0:
-        return s.codec_context.framerate
-    return DEFAULT_FPS
+def get_media_info(video_path: str) -> tuple[Fraction, int]:
+    """Opens a media file once to get key information: FPS and audio track count."""
+    fps = DEFAULT_FPS
+    audio_track_count = 0
+    try:
+        with av.open(video_path, 'r') as container:
+            audio_track_count = len(container.streams.audio)
+            if container.streams.video:
+                s = container.streams.video[0]
+                if s.average_rate and s.average_rate.denominator != 0:
+                    fps = s.average_rate
+                elif s.guessed_rate and s.guessed_rate.denominator != 0:
+                    fps = s.guessed_rate
+                elif s.codec_context and s.codec_context.framerate and s.codec_context.framerate.denominator != 0:
+                    fps = s.codec_context.framerate
+    except Exception as e:
+        click.echo(
+            click.style(f'Could not fully inspect {video_path}, falling back to defaults. Error: {e}', fg='red'),
+            err=True,
+        )
+    return fps, audio_track_count
 
 
 def load_audio_track(
@@ -33,12 +44,28 @@ def load_audio_track(
     max_duration: int,
     target_fps: Fraction,
 ) -> np.ndarray:
+    cache_dir = os.path.join(tempfile.gettempdir(), 'audio_aligner_cache')
+    os.makedirs(cache_dir, exist_ok=True)
+
+    try:
+        file_stat = os.stat(video_path)
+        cache_key_str = f"{video_path}{file_stat.st_mtime}{audio_track}{sample_rate}{max_duration}"
+        cache_key_hash = hashlib.md5(cache_key_str.encode()).hexdigest()
+        cache_file = os.path.join(cache_dir, f"{cache_key_hash}.npy")
+
+        if os.path.exists(cache_file):
+            click.echo(f"Loading from cache: {cache_file}")
+            return np.load(cache_file)
+    except Exception as e:
+        click.echo(click.style(f'Coud not check cache, got {e}', fg='red'), err=True)
+
     input_container = av.open(video_path, 'r')
 
-    input_fps = get_video_fps(video_path)
+    input_fps, _ = get_media_info(video_path)
     audio_speed_factor = float(target_fps / input_fps)
 
     input_audio_stream = input_container.streams.audio[audio_track]
+    input_audio_stream.thread_type = 'AUTO'
 
     title = input_audio_stream.metadata.get('title')
     language = input_audio_stream.metadata.get('language')
@@ -122,6 +149,12 @@ def load_audio_track(
 
         wav_buffer.seek(0)
         y, _ = librosa.load(wav_buffer, sr=None)
+
+        try:
+            np.save(cache_file, y)
+            click.echo(f"Saved to cache: {cache_file}")
+        except Exception as e:
+            click.echo(click.style(f'Coud not save to cache, got {e}', fg='red'), err=True)
 
         return y
 

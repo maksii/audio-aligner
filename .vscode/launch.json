@@ -1,0 +1,137 @@
+{
+    // See https://go.microsoft.com/fwlink/?linkid=830387
+    // for the documentation about the launch.json format
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug: Check ra and sa",
+            "type": "python",
+            "request": "launch",
+            "module": "audio_aligner.main",
+            "args": [
+                "align",
+                "E:\\iwant\\I.Want.to.Eat.Your.Pancreas.2018.1080p.BluRay.REMUX.AVC.DTS-HD.MA.mkv",
+                "E:\\iwant\\I.Want.to.Eat.Your.Pancreas.2018.1080p.BluRay.REMUX.AVC.DTS-HD.MA.mkv",
+                "-ra",
+                "2",
+                "-sa",
+                "3",
+                "-n",
+                "20"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug: Check 2 files",
+            "type": "python",
+            "request": "launch",
+            "module": "audio_aligner.main",
+            "args": [
+                "align",
+                "E:\\boku_ga\\To Every You Ive Loved Before (2022) {imdb-tt15439344} [Remux-1080p][DTS 5.1][UK+JA][h264].mkv",
+                "E:\\boku_ga\\Boku 2.aac",
+                "-n",
+                "20"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug: Check workers",
+            "type": "python",
+            "request": "launch",
+            "module": "audio_aligner.main",
+            "args": [
+                "align",
+                "E:\\boku_ga\\To Every You Ive Loved Before (2022) {imdb-tt15439344} [Remux-1080p][DTS 5.1][UK+JA][h264].mkv",
+                "E:\\boku_ga\\Boku 2.aac",
+                "-n",
+                "20"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug: Info command",
+            "type": "python",
+            "request": "launch",
+            "module": "audio_aligner.main",
+            "args": [
+                "info",
+                "E:\\iwant\\I.Want.to.Eat.Your.Pancreas.2018.1080p.BluRay.REMUX.AVC.DTS-HD.MA.mkv"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug: Intra-compare file",
+            "type": "python",
+            "request": "launch",
+            "module": "audio_aligner.main",
+            "args": [
+                "intra-compare",
+                "E:\\iwant\\I.Want.to.Eat.Your.Pancreas.2018.1080p.BluRay.REMUX.AVC.DTS-HD.MA.mkv",
+                "-n",
+                "10"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug: Intra-compare folder",
+            "type": "python",
+            "request": "launch",
+            "module": "audio_aligner.main",
+            "args": [
+                "intra-compare",
+                "--folder",
+                "E:\\iwant\\",
+                "-n",
+                "10"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug: Align with --all-tracks",
+            "type": "python",
+            "request": "launch",
+            "module": "audio_aligner.main",
+            "args": [
+                "align",
+                "E:\\boku_ga\\To Every You Ive Loved Before (2022) {imdb-tt15439344} [Remux-1080p][DTS 5.1][UK+JA][h264].mkv",
+                "E:\\iwant\\I.Want.to.Eat.Your.Pancreas.2018.1080p.BluRay.REMUX.AVC.DTS-HD.MA.mkv",
+                "--all-tracks",
+                "-n",
+                "10"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug: Align with --sec-folder",
+            "type": "python",
+            "request": "launch",
+            "module": "audio_aligner.main",
+            "args": [
+                "align",
+                "E:\\boku_ga\\Boku 2.aac",
+                "--sec-folder",
+                "E:\\boku_ga\\",
+                "-n",
+                "10"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug: Align with reporting",
+            "type": "python",
+            "request": "launch",
+            "module": "audio_aligner.main",
+            "args": [
+                "align",
+                "E:\\boku_ga\\To Every You Ive Loved Before (2022) {imdb-tt15439344} [Remux-1080p][DTS 5.1][UK+JA][h264].mkv",
+                "E:\\boku_ga\\Boku 2.aac",
+                "--output",
+                "results.json",
+                "-n",
+                "10"
+            ],
+            "console": "integratedTerminal"
+        }
+    ]
+} 

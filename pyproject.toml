@@ -21,7 +21,7 @@ dev = [
 ]
 
 [project.scripts]
-audio-aligner-cli = "audio_aligner.main:align_audio_cli"
+audio-aligner-cli = "audio_aligner.main:cli"
 
 [tool.hatch.version]
 path = "audio_aligner/__init__.py"
