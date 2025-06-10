@@ -6,7 +6,12 @@ from typing import TYPE_CHECKING
 import click
 import numpy as np
 
-from audio_aligner.processing import get_chunks, process_single_chunk, share_arrays
+from audio_aligner.processing import (
+    get_chunks,
+    init_worker,
+    process_single_chunk,
+    share_arrays,
+)
 from audio_aligner.video import get_video_fps, load_audio_track
 
 if TYPE_CHECKING:
@@ -159,7 +164,11 @@ def align_audio_cli(
         label=bar_label,
     ) as bar:
         if num_workers > 1:
-            with multiprocessing.Pool(processes=min(num_workers, len(chunk_tasks))) as pool:
+            with multiprocessing.Pool(
+                processes=min(num_workers, len(chunk_tasks)),
+                initializer=init_worker,
+                initargs=(shared_ref, shared_sec),
+            ) as pool:
                 result_iterator = pool.imap_unordered(process_single_chunk, worker_args)
                 for result in result_iterator:
                     chunk_delays_results.append(result)

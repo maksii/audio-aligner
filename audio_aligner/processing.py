@@ -10,6 +10,15 @@ shared_ref: np.ndarray | SynchronizedArray | None = None
 shared_sec: np.ndarray | SynchronizedArray | None = None
 
 
+def init_worker(
+    ref_: np.ndarray | SynchronizedArray,
+    sec_: np.ndarray | SynchronizedArray,
+) -> None:
+    global shared_ref, shared_sec
+    shared_ref = ref_
+    shared_sec = sec_
+
+
 def share_arrays(
     ref_: np.ndarray | SynchronizedArray,
     sec_: np.ndarray | SynchronizedArray,
