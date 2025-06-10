@@ -15,53 +15,42 @@ from typing import TYPE_CHECKING, Any, NewType, TypedDict
 import click
 import numpy as np
 
-from audio_aligner.processing import get_chunks, process_single_chunk, share_arrays
-from audio_aligner.video import get_video_fps, load_audio_track
-
 if TYPE_CHECKING:
     from multiprocessing.sharedctypes import SynchronizedArray
 
-
-def validate_positive_integer(ctx: click.Context, param: dict, value: int) -> int:
-    if value < 1:
-        raise click.BadParameter('Should be a positive integer.')
-    return value
-
-
-def validate_non_negative_integer(ctx: click.Context, param: dict, value: int) -> int:
-    if value < 0:
-        raise click.BadParameter('Should be a non-negative integer.')
-    return value
-
-
-@click.command(context_settings={'help_option_names': ['-h', '--help']})
-@click.argument('reference_video', type=click.Path(exists=True, dir_okay=False))
-@click.argument('secondary_video', type=click.Path(exists=True, dir_okay=False))
-@click.option(
-    '-ra',
-    '--ref-audio-track',
-    'ref_audio_track',
-    type=int,
-    default=0,
-    show_default=True,
-    help='Audio track number (0-indexed) from the reference video.',
+from audio_aligner.post_processing import build_results, print_results
+from audio_aligner.processing import (
+    get_chunks,
+    init_worker,
+    process_single_chunk,
+    share_arrays,
 )
-@click.option(
-    '-sa',
-    '--sec-audio-track',
-    'sec_audio_track',
-    type=int,
-    default=0,
-    show_default=True,
-    help='Audio track number (0-indexed) from the secondary video.',
+from audio_aligner.reports import get_reporter
+from audio_aligner.utils import validate_non_negative_integer, validate_positive_integer
+from audio_aligner.video import get_media_info, load_audio_track
+
+AlignmentResult = NewType('AlignmentResult', dict[str, Any])
+
+VIDEO_EXTS = (
+    '*.mkv',
+    '*.mp4',
+    '*.mov',
+    '*.avi',
+    '*.webm',
 )
-@click.option(
-    '-m',
-    '--method',
-    type=click.Choice(['rms', 'onset'], case_sensitive=False),
-    default='onset',
-    show_default=True,
-    help='Algorithm for feature extraction and comparison.',
+AUDIO_EXTS = (
+    '*.mp3',
+    '*.wav',
+    '*.flac',
+    '*.aac',
+    '*.ogg',
+    '*.m4a',
+    '*.opus',
+    '*.ac3',
+    '*.eac3',
+    '*.dts',
+    '*.dtshd',
+    '*.thd',
 )
 MEDIA_EXTS = VIDEO_EXTS + AUDIO_EXTS
 
@@ -149,7 +138,11 @@ def run_align(
         label=bar_label,
     ) as bar:
         if num_workers > 1:
-            with multiprocessing.Pool(processes=min(num_workers, len(chunk_tasks))) as pool:
+            with multiprocessing.Pool(
+                processes=min(num_workers, len(chunk_tasks)),
+                initializer=init_worker,
+                initargs=(shared_ref, shared_sec),
+            ) as pool:
                 result_iterator = pool.imap_unordered(process_single_chunk, worker_args)
                 for result in result_iterator:
                     chunk_delays_results.append(result)
@@ -535,3 +528,4 @@ if __name__ == '__main__':
         cli(sys.argv[1:])
     else:
         cli()
+
