@@ -1,5 +1,6 @@
 import os
-from multiprocessing.sharedctypes import SynchronizedArray
+from multiprocessing.sharedctypes import Array, SynchronizedArray
+from typing import Any
 
 import click
 import numpy as np
@@ -9,13 +10,10 @@ from scipy.signal import correlate
 shared_ref: np.ndarray | SynchronizedArray | None = None
 shared_sec: np.ndarray | SynchronizedArray | None = None
 
-def init_worker(
-    ref_: np.ndarray | SynchronizedArray,
-    sec_: np.ndarray | SynchronizedArray,
-) -> None:
+def init_worker(ref: Array, sec: Array) -> None:
     global shared_ref, shared_sec
-    shared_ref = ref_
-    shared_sec = sec_
+    shared_ref = ref
+    shared_sec = sec
 
 def share_arrays(
     ref_: np.ndarray | SynchronizedArray,
@@ -27,37 +25,45 @@ def share_arrays(
 
 
 def get_chunks(
-    reference_y: np.ndarray,
-    secondary_y: np.ndarray,
-    chunk_duration: int,
-    sample_rate: int,
-) -> list[dict]:
-    samples_per_chunk = int(chunk_duration * sample_rate)
-    chunk_tasks = []
-    min_len = min(len(reference_y), len(secondary_y))
-    current_pos = 0
-    chunk_idx = 0
-    while current_pos < min_len:
-        start_sample = current_pos
-        end_sample = current_pos + samples_per_chunk
-        actual_end_sample = min(end_sample, min_len)
+    ref_y: np.ndarray, sec_y: np.ndarray, chunk_duration: float, sr: int
+) -> list[dict[str, Any]]:
+    ref_duration = len(ref_y) / sr
+    sec_duration = len(sec_y) / sr
+    min_duration = min(ref_duration, sec_duration)
 
-        # A very tiny last chunk might not give good correlation.
-        # don't process if less than 1/4th
-        min_practical_chunk_samples = samples_per_chunk // 4
-        if (actual_end_sample - start_sample) < min_practical_chunk_samples and chunk_idx > 0:
-            break
-
-        chunk_tasks.append(
+    if min_duration < chunk_duration:
+        return [
             {
-                'chunk_idx': chunk_idx,
-                'start': start_sample,
-                'end': actual_end_sample,
-            },
+                'id': 0,
+                'start': 0,
+                'ref_slice': (0, len(ref_y)),
+                'sec_slice': (0, len(sec_y)),
+            }
+        ]
+
+    chunk_size = int(chunk_duration * sr)
+    ref_chunks_indices = [
+        (i, i + chunk_size) for i in range(0, len(ref_y), chunk_size)
+    ]
+    sec_chunks_indices = [
+        (i, i + chunk_size) for i in range(0, len(sec_y), chunk_size)
+    ]
+
+    min_chunks = min(len(ref_chunks_indices), len(sec_chunks_indices))
+
+    tasks = []
+    for i in range(min_chunks):
+        ref_start, ref_end = ref_chunks_indices[i]
+        sec_start, sec_end = sec_chunks_indices[i]
+        tasks.append(
+            {
+                'id': i,
+                'start': int(ref_start / sr),
+                'ref_slice': (ref_start, ref_end),
+                'sec_slice': (sec_start, sec_end),
+            }
         )
-        current_pos = end_sample
-        chunk_idx += 1
-    return chunk_tasks
+    return tasks
 
 
 def process_single_chunk(
@@ -78,8 +84,11 @@ def process_single_chunk(
     else:
         y_sec_full_data = np.frombuffer(shared_sec.get_obj(), dtype=np.float32)
 
-    y_ref_chunk = y_ref_full_data[task_info['start'] : task_info['end']]
-    y_sec_chunk = y_sec_full_data[task_info['start'] : task_info['end']]
+    ref_start, ref_end = task_info['ref_slice']
+    sec_start, sec_end = task_info['sec_slice']
+
+    y_ref_chunk = y_ref_full_data[ref_start:ref_end]
+    y_sec_chunk = y_sec_full_data[sec_start:sec_end]
 
     try:
         hop_length = int(sr / 1000) + 1
@@ -110,11 +119,11 @@ def process_single_chunk(
 
         delay_frames = lags[np.argmax(correlation)]
         delay_seconds = delay_frames * hop_length / sr
-        return task_info['chunk_idx'], int(delay_seconds * 1000)
+        return task_info['start'], int(delay_seconds * 1000)
     except Exception as e:
         click.echo(
             click.style(
-                f'Worker (PID {os.getpid()}) Error in chunk {task_info["chunk_idx"]}: {e}',
+                f"Worker (PID {os.getpid()}) Error in chunk {task_info['id']}: {e}",
                 fg='red',
             ),
             err=True,
