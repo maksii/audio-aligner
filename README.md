@@ -4,18 +4,69 @@ Audio-Aligner is a CLI tool designed to accurately synchronize audio tracks from
 
 ## Usage
 
+The tool is organized into three main commands: `align`, `intra-compare`, and `info`.
+
+### `align`
+
+Aligns a primary reference video against one or more secondary videos.
+
 ```bash
-Usage: audio-aligner-cli [OPTIONS] REFERENCE_VIDEO SECONDARY_VIDEO
+Usage: audio-aligner align [OPTIONS] VIDEOS...
+
+Arguments:
+  VIDEOS...  [required]
 
 Options:
+  --sec-folder DIRECTORY          Path to a folder with secondary videos.
   -ra, --ref-audio-track INTEGER  Audio track number (0-indexed) from the reference video.  [default: 0]
   -sa, --sec-audio-track INTEGER  Audio track number (0-indexed) from the secondary video.  [default: 0]
+  -a, --all-tracks                Compare a reference tracks to all tracks in a secondary video.
   -m, --method [rms|onset]        Algorithm for feature extraction and comparison.  [default: onset]
   -md, --max-duration INTEGER     Maximum duration (seconds) from the start of each video to process. 0 for full length. [default: 0]
   -cd, --chunk-duration FLOAT     Duration (seconds) of audio chunks for parallel processing.  [default: 300]
   -sr, --sample-rate INTEGER      Target sampling rate (Hz) for audio processing.  [default: 48000]
   -n, --num-workers INTEGER       Number of parallel worker processes.  [default: 1]
+  --output FILE                   Path to save the report file.
+  --output-format [json|csv]      Output report format.  [default: json]
+  --delay-threshold INTEGER       Sets the delay threshold for highlighting issues.  [default: 42]
   -h, --help                      Show this message and exit.
+```
+
+### `intra-compare`
+
+Compares audio tracks within the same video or a set of videos to find internal synchronization issues.
+
+```bash
+Usage: audio-aligner intra-compare [OPTIONS] [VIDEO_FILES]...
+
+Arguments:
+  [VIDEO_FILES]...
+
+Options:
+  --folder DIRECTORY              Check all videos in a folder.
+  -m, --method [rms|onset]        Algorithm for feature extraction and comparison.  [default: onset]
+  -md, --max-duration INTEGER     Maximum duration (seconds) from the start of each video to process. 0 for full length. [default: 0]
+  -cd, --chunk-duration FLOAT     Duration (seconds) of audio chunks for parallel processing.  [default: 300]
+  -sr, --sample-rate INTEGER      Target sampling rate (Hz) for audio processing.  [default: 48000]
+  -n, --num-workers INTEGER       Number of parallel worker processes.  [default: 1]
+  --output FILE                   Path to save the report file.
+  --output-format [json|csv]      Output report format.  [default: json]
+  --delay-threshold INTEGER       Sets the delay threshold for highlighting issues.  [default: 42]
+  -h, --help                      Show this message and exit.
+```
+
+### `info`
+
+Displays media information about a video file, including available audio tracks.
+
+```bash
+Usage: audio-aligner info [OPTIONS] VIDEO_FILE
+
+Arguments:
+  VIDEO_FILE  [required]
+
+Options:
+  -h, --help  Show this message and exit.
 ```
 
 ## Memory Requirements
@@ -70,7 +121,6 @@ The tool follows these steps to determine the audio delay:
 
 1.  **Audio Extraction:**
     *   Extracts audio from the specified tracks of both the reference and secondary video files.
-    *   Alternatively, can directly process provided audio files.
     *   If `--max-duration` is set (e.g., to 1800 for 30 minutes), only the initial segment of this duration is 
     extracted from each audio source. Otherwise, the full audio is used.
 
