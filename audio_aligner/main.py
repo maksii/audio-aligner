@@ -26,6 +26,7 @@ from audio_aligner.processing import (
     share_arrays,
 )
 from audio_aligner.reports import get_reporter
+from audio_aligner.suggestions import generate_suggestions
 from audio_aligner.utils import validate_non_negative_integer, validate_positive_integer
 from audio_aligner.video import get_media_info, load_audio_track
 
@@ -271,6 +272,13 @@ def cli() -> None:
     show_default=True,
     help='Sets the delay threshold for highlighting issues.',
 )
+@click.option(
+    '--suggestions',
+    'suggestions',
+    is_flag=True,
+    default=False,
+    help='Show suggestions to fix audio sync.',
+)
 def align(
     videos: tuple[str, ...],
     sec_folder_path: str,
@@ -285,6 +293,7 @@ def align(
     output: str | None,
     output_format: Literal['json', 'csv'],
     delay_threshold: int,
+    suggestions: bool,
 ) -> None:
     if not videos:
         raise click.UsageError('Missing video file arguments.')
@@ -372,6 +381,8 @@ def align(
             click.echo(click.style(f'  Error processing pair: {e}', fg='red'), err=True)
 
     print_results(all_results, delay_threshold, output, output_format)
+    if suggestions:
+        generate_suggestions(all_results)
 
 
 @cli.command('intra-compare')

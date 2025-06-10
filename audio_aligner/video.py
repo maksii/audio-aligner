@@ -37,6 +37,28 @@ def get_media_info(video_path: str) -> tuple[Fraction, int]:
     return fps, audio_track_count
 
 
+def get_media_json(video_path: str) -> dict:
+    """Opens a media file and returns the JSON representation of its streams."""
+    try:
+        with av.open(video_path, 'r') as container:
+            streams_data = []
+            for stream in container.streams:
+                stream_data = {
+                    'codec_name': stream.codec_context.name,
+                    'codec_type': stream.type,
+                }
+                if stream.type == 'video':
+                    stream_data['avg_frame_rate'] = str(stream.average_rate)
+                streams_data.append(stream_data)
+            return {"streams": streams_data}
+    except Exception as e:
+        click.echo(
+            click.style(f'Could not read media information from {video_path}. Error: {e}', fg='red'),
+            err=True,
+        )
+        return {}
+
+
 def load_audio_track(
     video_path: str,
     audio_track: int,
