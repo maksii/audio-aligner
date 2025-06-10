@@ -4,7 +4,7 @@ Audio-Aligner is a CLI tool designed to accurately synchronize audio tracks from
 
 ## Usage
 
-The tool is organized into three main commands: `align`, `intra-compare`, and `info`.
+The tool is organized into two main commands: `align`, `intra-compare`.
 
 ### `align`
 
@@ -53,20 +53,6 @@ Options:
   --output-format [json|csv]      Output report format.  [default: json]
   --delay-threshold INTEGER       Sets the delay threshold for highlighting issues.  [default: 42]
   -h, --help                      Show this message and exit.
-```
-
-### `info`
-
-Displays media information about a video file, including available audio tracks.
-
-```bash
-Usage: audio-aligner info [OPTIONS] VIDEO_FILE
-
-Arguments:
-  VIDEO_FILE  [required]
-
-Options:
-  -h, --help  Show this message and exit.
 ```
 
 ## Memory Requirements
