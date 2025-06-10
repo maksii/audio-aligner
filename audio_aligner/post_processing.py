@@ -72,7 +72,12 @@ def print_results(
         click.echo('  Summary:')
         mode_delay = res['mode_delay_ms']
         avg_delay = res['average_delay_ms']
-        if abs(mode_delay) > delay_threshold or abs(avg_delay) > delay_threshold:
+        max_delay = res['max_delay_ms']
+        if (
+            abs(mode_delay) > delay_threshold
+            or abs(avg_delay) > delay_threshold
+            or abs(max_delay) > delay_threshold
+        ):
             issues_found += 1
         click.echo(
             click.style(
@@ -86,22 +91,41 @@ def print_results(
                 fg='red' if abs(avg_delay) > delay_threshold else 'green',
             )
         )
+        click.echo(
+            click.style(
+                f"    Peak Delay: {max_delay}ms {'(High Delay!)' if abs(max_delay) > delay_threshold else '(OK)'}",
+                fg='red' if abs(max_delay) > delay_threshold else 'green',
+            )
+        )
 
     click.echo('====================')
     click.echo('Alignment Check Complete')
     click.echo('====================')
     click.echo(f'Track Pairs Compared: {len(results)}')
-    click.echo(f'Issues Found (delay > {delay_threshold}ms): {issues_found}')
+    click.echo(
+        click.style(
+            f'Issues Found (delay > {delay_threshold}ms): {issues_found}',
+            fg="red" if issues_found > 0 else "green",
+        )
+    )
 
     if issues_found > 0:
         click.echo('Problem Files:')
         for res in results:
+            mode_delay = res['mode_delay_ms']
+            avg_delay = res['average_delay_ms']
+            max_delay = res['max_delay_ms']
             if (
-                abs(res['mode_delay_ms']) > delay_threshold
-                or abs(res['average_delay_ms']) > delay_threshold
+                abs(mode_delay) > delay_threshold
+                or abs(avg_delay) > delay_threshold
+                or abs(max_delay) > delay_threshold
             ):
                 click.echo(
-                    f' - {res["secondary_file"]} (Track {res["reference_track"]} vs {res["secondary_track"]}: {res["mode_delay_ms"]}ms)'
+                    click.style(
+                        f' - {res["secondary_file"]} (Track {res["reference_track"]} vs {res["secondary_track"]}: '
+                        f'mode: {mode_delay}ms, avg: {avg_delay}ms, peak: {max_delay}ms)',
+                        fg='red',
+                    )
                 )
 
     if output_path and output_format:
