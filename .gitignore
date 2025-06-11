@@ -141,10 +141,4 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Visual Studio Code
-.vscode/*
-!settings.json
-!tasks.json
-!launch.json
-!extensions.json
-.history
+report.json

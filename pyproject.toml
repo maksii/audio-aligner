@@ -19,6 +19,14 @@ dev = [
     "mypy",
     "pyinstaller",
 ]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-benchmark>=4.0.0",
+    "hypothesis>=6.70.0",
+    "factory-boy>=3.2.0",
+]
 
 [project.scripts]
 audio-aligner-cli = "audio_aligner.main:cli"
