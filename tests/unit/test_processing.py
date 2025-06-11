@@ -1,7 +1,12 @@
 import numpy as np
 import pytest
 
-from audio_aligner.processing import get_chunks, process_single_chunk, share_arrays
+from audio_aligner.processing import (
+    get_chunks,
+    process_single_chunk,
+    share_arrays,
+    init_worker,
+)
 from tests.fixtures.mock_audio_data import (
     generate_delayed_audio,
     generate_onset_pattern,
@@ -98,5 +103,48 @@ def test_chunk_boundary_handling(sample_rate):
 
 
 def test_multiprocessing_consistency():
-    # This is better tested at the integration level to ensure the pool works
-    pass 
+    """Ensure that running the alignment logic in parallel gives the same
+    results as running it serially for the same inputs.
+
+    The test keeps the audio duration short so that spawning the pool is fast
+    and memory-friendly inside the CI environment. We use the same
+    ``process_single_chunk`` worker that the CLI relies on and reproduce the
+    Pool initialisation sequence from ``run_align``.
+    """
+
+    import ctypes
+    import multiprocessing as mp
+
+    # Generate a simple synthetic signal and a delayed copy
+    sample_rate = 48_000
+    duration = 5  # seconds
+    delay_ms = 80
+    ref_audio = generate_reference_audio(duration, sample_rate, "onset")
+    sec_audio = generate_delayed_audio(ref_audio, delay_ms, sample_rate)
+
+    # Prepare one chunk covering the full signal
+    share_arrays(ref_audio, sec_audio)
+    chunks = get_chunks(ref_audio, sec_audio, chunk_duration=duration, sr=sample_rate)
+    assert len(chunks) == 1
+    task_args = (sample_rate, "onset", chunks[0])
+
+    # Serial execution
+    serial_result = process_single_chunk(task_args)
+
+    # Parallel execution with a pool of 2 workers
+    shared_ref = mp.Array(ctypes.c_float, ref_audio.size)
+    shared_sec = mp.Array(ctypes.c_float, sec_audio.size)
+    import numpy as _np
+
+    _np.copyto(_np.frombuffer(shared_ref.get_obj(), dtype=_np.float32), ref_audio)
+    _np.copyto(_np.frombuffer(shared_sec.get_obj(), dtype=_np.float32), sec_audio)
+
+    with mp.Pool(processes=2, initializer=init_worker, initargs=(shared_ref, shared_sec)) as pool:
+        parallel_result = pool.apply(process_single_chunk, (task_args,))
+
+    # Both approaches should yield approximately the same delay (±2 ms)
+    assert serial_result is not None
+    assert parallel_result is not None
+    _, serial_delay = serial_result
+    _, parallel_delay = parallel_result
+    assert abs(serial_delay - parallel_delay) <= 2 
